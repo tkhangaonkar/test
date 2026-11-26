@@ -1,0 +1,8 @@
+{
+  "appId": "app.deckflow.dj",
+  "appName": "DeckFlow DJ",
+  "webDir": "dist",
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "deckflow-dj",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "DeckFlow DJ — a free two-deck DJ mixer that runs in the browser (and on Android via Capacitor). Every feature included, no paywall.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc -b",
+    "android:init": "npm run build && npx cap add android",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.6.11",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.6.11",
+    "@capacitor/cli": "^7.6.11",
+    "@types/react": "^19.3.3",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.2"
+  }
+}
