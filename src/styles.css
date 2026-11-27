@@ -1366,37 +1366,451 @@ kbd {
   }
 }
 
-/* Phones held sideways: size the platters by screen height so a deck fits without scrolling. */
-@media (orientation: landscape) and (max-height: 520px) {
-  .app {
-    gap: 6px;
-    padding-top: 4px;
-  }
-  .wave-scroll {
-    height: 40px;
-  }
-  .platter {
-    max-width: min(300px, 42vh);
-  }
-  .fader-v {
-    min-height: 80px;
-  }
-  .transport .btn {
-    min-height: 40px;
-  }
-  .pad {
-    min-height: 40px;
-  }
-  .deck {
-    gap: 6px;
-  }
-}
-
 @media (max-width: 640px) {
   .ch-fader {
     height: 120px;
   }
   .master-vu {
     min-height: 80px;
+  }
+}
+
+/* ---------------------------------------------------- key / cue / phones */
+
+.panels-btn,
+.drawer-close,
+.drawer-scrim {
+  display: none;
+}
+.ch-cue {
+  width: 34px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.ch-cue.on {
+  background: var(--cue);
+  border-color: var(--cue);
+  color: #1a1405;
+}
+.phones .modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  margin: 10px 0;
+}
+.mode {
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mode.on {
+  border-color: var(--cue);
+  box-shadow: inset 0 0 0 1px var(--cue);
+}
+.mode-title {
+  font-weight: 700;
+}
+.mode-text {
+  font-size: 12px;
+  color: var(--muted);
+}
+.devices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.devices label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+.devices select {
+  height: 34px;
+  max-width: 260px;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  padding: 0 6px;
+}
+.devices p {
+  width: 100%;
+  margin: 0;
+}
+.inline-icon svg {
+  vertical-align: -4px;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel-3);
+  border: 1px solid var(--line);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  font-size: 13px;
+  z-index: 20;
+}
+
+/* -------------------------------------------- phone landscape "cockpit" */
+/* Phones held sideways: everything on one screen, panels in a slide-up drawer. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .app {
+    height: 100dvh;
+    max-width: none;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px max(6px, env(safe-area-inset-right)) calc(4px + env(safe-area-inset-bottom))
+      max(6px, env(safe-area-inset-left));
+  }
+  .topbar {
+    padding: 0;
+  }
+  .brand {
+    font-size: 14px;
+  }
+  .topbar .chip,
+  .topbar .rec {
+    min-height: 28px;
+    font-size: 12px;
+  }
+  .topbar .icon {
+    width: 28px;
+    height: 28px;
+  }
+  .panels-btn {
+    display: inline-flex;
+    align-items: center;
+  }
+  .waves {
+    padding: 3px;
+    gap: 3px;
+  }
+  .wave-scroll {
+    height: 30px;
+  }
+  .wave-tag {
+    width: 14px;
+    font-size: 10px;
+  }
+  .zoom {
+    display: none;
+  }
+
+  .main {
+    grid-template-columns: minmax(0, 1fr) minmax(240px, 290px) minmax(0, 1fr);
+    grid-template-areas: 'a mixer b';
+    align-items: stretch;
+    min-height: 0;
+    gap: 6px;
+  }
+  .deck-wrap {
+    display: flex;
+    min-height: 0;
+  }
+  .deck {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 5px;
+    gap: 4px 5px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 46px;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: 'head head' 'platter tempo' 'transport tempo' 'modes tempo' 'pads tempo';
+  }
+  .deck.right {
+    grid-template-columns: 46px minmax(0, 1fr);
+    grid-template-areas: 'head head' 'tempo platter' 'tempo transport' 'tempo modes' 'tempo pads';
+  }
+  .deck .wave-overview,
+  .deck .clock,
+  .deck .tempo-h {
+    display: none !important;
+  }
+  /* Let the platter and tempo column become cells of the deck grid. */
+  .left .deck-body,
+  .right .deck-body {
+    display: contents;
+  }
+  .deck-head {
+    grid-area: head;
+    gap: 6px;
+  }
+  .deck-badge {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
+    border-radius: 6px;
+  }
+  .deck-title .title {
+    font-size: 12px;
+  }
+  .deck-title .artist {
+    font-size: 10px;
+  }
+  .bpm {
+    font-size: 15px;
+  }
+  .bpm-sub {
+    font-size: 10px;
+  }
+  .platter {
+    grid-area: platter;
+    justify-self: center;
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    margin: 0;
+  }
+  .platter-hint {
+    font-size: 10px;
+  }
+  .tempo-col {
+    grid-area: tempo;
+    width: 46px !important;
+    min-height: 0;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    gap: 4px;
+  }
+  .tempo-col .chip.small {
+    min-height: 24px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+  .tempo-col .fader-v {
+    display: block !important;
+    flex: 1;
+    min-height: 40px;
+    width: 36px;
+  }
+  .bend {
+    flex-direction: column !important;
+    gap: 4px;
+  }
+  .bend .chip {
+    width: 42px !important;
+    min-height: 26px;
+  }
+  .transport {
+    grid-area: transport;
+    grid-template-columns: 1fr 1.3fr 1fr !important;
+    gap: 4px;
+  }
+  .transport .play {
+    grid-column: auto !important;
+    order: 0 !important;
+  }
+  .transport .btn {
+    min-height: 32px !important;
+    font-size: 11px;
+  }
+  .pad-modes {
+    grid-area: modes;
+    padding: 2px;
+  }
+  .pad-modes .tab {
+    min-height: 20px;
+    font-size: 10px;
+  }
+  .pads,
+  .pads.mode-grid {
+    grid-area: pads;
+    grid-template-columns: none !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 3px;
+  }
+  .pad {
+    min-height: 30px !important;
+    border-radius: 7px;
+  }
+  .pad-sub {
+    display: none;
+  }
+  .pad-num {
+    font-size: 12px;
+  }
+
+  .mixer {
+    max-width: none;
+    min-height: 0;
+    padding: 5px;
+    gap: 4px;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+  .channels {
+    min-height: 0;
+    gap: 4px;
+  }
+  .channel {
+    min-height: 0;
+    padding: 4px 3px;
+    gap: 2px 3px;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'gain filter cue'
+      'hi mid low'
+      'fader fader fader';
+    justify-items: center;
+  }
+  .channel .ch-label {
+    display: none;
+  }
+  .ch-a {
+    box-shadow: inset 0 2px 0 var(--deck-a);
+  }
+  .ch-b {
+    box-shadow: inset 0 2px 0 var(--deck-b);
+  }
+  .channel .ch-fader .vu {
+    height: 100%;
+  }
+  .channel .k-gain {
+    grid-area: gain;
+  }
+  .channel .k-filter {
+    grid-area: filter;
+  }
+  .channel .ch-cue {
+    grid-area: cue;
+    width: 28px;
+    height: 24px;
+    align-self: center;
+  }
+  .channel .eq-high {
+    grid-area: hi;
+  }
+  .channel .eq-mid {
+    grid-area: mid;
+  }
+  .channel .eq-low {
+    grid-area: low;
+  }
+  .channel .ch-fader {
+    grid-area: fader;
+    align-self: stretch;
+    height: auto;
+    min-height: 0;
+  }
+  .channel .ch-fader .fader-v {
+    min-height: 0;
+  }
+  .mixer .knob svg {
+    width: 26px;
+    height: 26px;
+  }
+  .knob-label {
+    font-size: 9px;
+  }
+  .kill {
+    font-size: 9px;
+    padding: 1px 4px;
+  }
+  .master-col {
+    padding: 4px 2px;
+    gap: 2px;
+    min-height: 0;
+  }
+  .master-col .ch-label {
+    font-size: 8px;
+  }
+  .master-vu {
+    min-height: 0;
+  }
+  .xfader .fader-h {
+    height: 30px;
+  }
+  .curves .chip {
+    min-height: 20px;
+    font-size: 10px;
+    padding: 0 8px;
+  }
+  .master-vu {
+    flex: 1 1 0;
+    height: 0;
+  }
+
+  .bottom {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: 10dvh;
+    bottom: 0;
+    z-index: 8;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px 12px 0 0;
+    transform: translateY(105%);
+    transition: transform 0.2s ease;
+  }
+  .app.drawer-open .bottom {
+    transform: none;
+  }
+  .tab-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+  .tracks {
+    max-height: none;
+  }
+  .drawer-close {
+    display: inline-flex;
+    margin-left: auto;
+    flex: none;
+  }
+  .drawer-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 7;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 370px) {
+  .wave-scroll {
+    height: 22px;
+  }
+  .topbar .chip,
+  .topbar .rec,
+  .topbar .icon {
+    min-height: 24px;
+    height: 24px;
+  }
+  .brand {
+    font-size: 13px;
+  }
+  .deck-title .artist,
+  .bpm-sub {
+    display: none;
+  }
+  .transport .btn {
+    min-height: 28px !important;
+  }
+  .pad {
+    min-height: 26px !important;
   }
 }

@@ -62,6 +62,7 @@ export function Knob({
       <svg
         width={size}
         height={size}
+        viewBox={`0 0 ${size} ${size}`}
         role="slider"
         tabIndex={0}
         aria-label={typeof label === 'string' ? label : title}

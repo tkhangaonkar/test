@@ -5,11 +5,12 @@ import { DeckPanel } from './components/DeckPanel';
 import { FxPanel } from './components/FxPanel';
 import { LibraryPanel, RecordingsPanel } from './components/LibraryPanel';
 import { Mixer } from './components/Mixer';
+import { PhonesPanel } from './components/PhonesPanel';
 import { SamplerPanel } from './components/SamplerPanel';
 import { ScrollingWaveform } from './components/Waveform';
 import { formatTime, useFrame, useStore } from './hooks';
 
-type Tab = 'library' | 'fx' | 'sampler' | 'mixes';
+type Tab = 'library' | 'fx' | 'sampler' | 'phones' | 'mixes';
 
 const SHORTCUTS: [string, string][] = [
   ['Q / P', 'Play / pause deck A / B'],
@@ -74,7 +75,7 @@ function RecButton({ engine }: { engine: Engine }) {
   );
 }
 
-function TopBar({ engine, onHelp }: { engine: Engine; onHelp: () => void }) {
+function TopBar({ engine, onHelp, onPanels }: { engine: Engine; onHelp: () => void; onPanels: () => void }) {
   const s = useStore(engine.store);
   return (
     <header className="topbar">
@@ -92,6 +93,9 @@ function TopBar({ engine, onHelp }: { engine: Engine; onHelp: () => void }) {
           {s.automix ? '● Automix' : 'Automix'}
         </button>
         <RecButton engine={engine} />
+        <button className="chip panels-btn" onClick={onPanels} title="Library, effects, sampler and more">
+          ☰ Panels
+        </button>
         <button className="icon help" onClick={onHelp} aria-label="Keyboard shortcuts and help">
           ?
         </button>
@@ -120,6 +124,12 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
           </li>
           <li>
             <b>Roll</b> pads loop while held, then the track carries on as if you never stopped.
+          </li>
+          <li>
+            <b>KEY</b> locks the musical key, so tempo changes don’t change the pitch.
+          </li>
+          <li>
+            <b>Headphones</b>: tap the headphone button on a channel to pre-listen; set it up in the Phones tab.
           </li>
           <li>
             <b>Double-tap</b> any knob or fader to reset it.
@@ -231,6 +241,8 @@ function Workspace({ engine }: { engine: Engine }) {
   const [zoom, setZoom] = useState(8);
   const [help, setHelp] = useState(false);
   const [dropTarget, setDropTarget] = useState<DeckId | 'library' | null>(null);
+  const [drawer, setDrawer] = useState(false);
+  const { notice } = useStore(engine.store);
   const decks = [engine.decks.A, engine.decks.B];
 
   const onDrop = (e: React.DragEvent, target: DeckId | 'library') => {
@@ -252,8 +264,8 @@ function Workspace({ engine }: { engine: Engine }) {
   });
 
   return (
-    <div className="app" {...dragProps('library')}>
-      <TopBar engine={engine} onHelp={() => setHelp(true)} />
+    <div className={`app ${drawer ? 'drawer-open' : ''}`} {...dragProps('library')}>
+      <TopBar engine={engine} onHelp={() => setHelp(true)} onPanels={() => setDrawer((d) => !d)} />
 
       <div className="waves">
         {decks.map((d) => (
@@ -288,6 +300,7 @@ function Workspace({ engine }: { engine: Engine }) {
               ['library', 'Library'],
               ['fx', 'Effects'],
               ['sampler', 'Sampler'],
+              ['phones', 'Phones'],
               ['mixes', 'Recordings'],
             ] as [Tab, string][]
           ).map(([t, label]) => (
@@ -295,16 +308,26 @@ function Workspace({ engine }: { engine: Engine }) {
               {label}
             </button>
           ))}
+          <button className="icon drawer-close" onClick={() => setDrawer(false)} aria-label="Close panels">
+            ✕
+          </button>
         </nav>
         <div className="tab-body">
           {tab === 'library' && <LibraryPanel engine={engine} />}
           {tab === 'fx' && <FxPanel decks={decks} />}
           {tab === 'sampler' && <SamplerPanel sampler={engine.sampler} />}
+          {tab === 'phones' && <PhonesPanel engine={engine} />}
           {tab === 'mixes' && <RecordingsPanel engine={engine} />}
         </div>
       </section>
 
       {dropTarget === 'library' && <div className="drop-hint">Drop audio files to add them to the library</div>}
+      {drawer && <div className="drawer-scrim" onClick={() => setDrawer(false)} />}
+      {notice && (
+        <div className="toast" role="status">
+          {notice}
+        </div>
+      )}
       {help && <HelpDialog onClose={() => setHelp(false)} />}
     </div>
   );

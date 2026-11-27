@@ -11,11 +11,25 @@ const db = (v: number) => {
   return `${d >= 0 ? '+' : ''}${d.toFixed(1)} dB`;
 };
 
-function Channel({ deck }: { deck: Deck }) {
+export function PhonesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+      <path
+        d="M4 14v-2a8 8 0 0 1 16 0v2M4 14h2.5a1.5 1.5 0 0 1 1.5 1.5v3A1.5 1.5 0 0 1 6.5 20H5a1 1 0 0 1-1-1v-5zm16 0h-2.5a1.5 1.5 0 0 0-1.5 1.5v3a1.5 1.5 0 0 0 1.5 1.5H19a1 1 0 0 0 1-1v-5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function Channel({ deck, engine }: { deck: Deck; engine: Engine }) {
   const s = useStore(deck.store);
   const color = `var(--deck-${deck.id.toLowerCase()})`;
   const band = (b: EqBand, label: string) => (
-    <div className={`eq-row ${s.kills[b] ? 'killed' : ''}`}>
+    <div className={`eq-row eq-${b} ${s.kills[b] ? 'killed' : ''}`}>
       <Knob
         value={s.eq[b]}
         onChange={(v) => deck.setEq(b, v)}
@@ -41,6 +55,7 @@ function Channel({ deck }: { deck: Deck }) {
         {deck.id}
       </div>
       <Knob
+        className="k-gain"
         value={s.trim}
         onChange={(v) => deck.setTrim(v)}
         bipolar
@@ -53,6 +68,7 @@ function Channel({ deck }: { deck: Deck }) {
       {band('mid', 'MID')}
       {band('low', 'LOW')}
       <Knob
+        className="k-filter"
         value={s.filter}
         onChange={(v) => deck.setFilter(Math.abs(v) < 0.03 ? 0 : v)}
         bipolar
@@ -62,6 +78,15 @@ function Channel({ deck }: { deck: Deck }) {
         title="Left: low-pass · right: high-pass · double-tap to reset"
         format={(v) => (Math.abs(v) < 0.03 ? 'off' : v < 0 ? `LP ${Math.round(-v * 100)}%` : `HP ${Math.round(v * 100)}%`)}
       />
+      <button
+        className={`ch-cue ${s.pfl ? 'on' : ''}`}
+        onClick={() => engine.togglePfl(deck)}
+        aria-pressed={s.pfl}
+        aria-label={`Cue deck ${deck.id} in headphones`}
+        title="Pre-listen this deck in your headphones"
+      >
+        <PhonesIcon />
+      </button>
       <div className="ch-fader">
         <VuMeter analyser={deck.analyser} />
         <Fader
@@ -83,7 +108,7 @@ export function Mixer({ engine }: { engine: Engine }) {
   return (
     <section className="mixer" aria-label="Mixer">
       <div className="channels">
-        <Channel deck={engine.decks.A} />
+        <Channel deck={engine.decks.A} engine={engine} />
         <div className="master-col">
           <div className="ch-label">MASTER</div>
           <Knob
@@ -96,9 +121,34 @@ export function Mixer({ engine }: { engine: Engine }) {
             label="Level"
             format={(v) => `${Math.round(v * 100)}%`}
           />
+          <Knob
+            className="k-cuemix"
+            value={s.cueMix}
+            min={0}
+            max={1}
+            defaultValue={0.25}
+            onChange={(v) => engine.setCueMix(v)}
+            size={34}
+            label="Cue/Mst"
+            color="var(--cue)"
+            title="Headphone mix: left = cue only, right = master only"
+            format={(v) => `${Math.round((1 - v) * 100)}% cue`}
+          />
+          <Knob
+            className="k-phones"
+            value={s.phonesLevel}
+            min={0}
+            max={1}
+            defaultValue={0.8}
+            onChange={(v) => engine.setPhonesLevel(v)}
+            size={34}
+            label="Phones"
+            color="var(--cue)"
+            format={(v) => `${Math.round(v * 100)}%`}
+          />
           <VuMeter analyser={engine.masterAnalyser} className="master-vu" />
         </div>
-        <Channel deck={engine.decks.B} />
+        <Channel deck={engine.decks.B} engine={engine} />
       </div>
       <div className="xfader">
         <span className="xf-side a">A</span>

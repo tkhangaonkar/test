@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { DeckId } from '../audio/deck';
 import type { Engine } from '../audio/engine';
 import { formatTime, useStore } from '../hooks';
+import { isNative, saveRecording, shareRecording } from '../native';
 
 export function LibraryPanel({ engine }: { engine: Engine }) {
   const { tracks } = useStore(engine.library.store);
@@ -122,13 +123,14 @@ export function LibraryPanel({ engine }: { engine: Engine }) {
 
 export function RecordingsPanel({ engine }: { engine: Engine }) {
   const s = useStore(engine.store);
+  const native = isNative();
   if (!engine.canRecord) {
     return <p className="muted pad-text">Recording is not supported in this browser.</p>;
   }
   return (
     <div className="recordings">
       <p className="muted">
-        Tap <b>REC</b> in the top bar to record everything you play — decks, effects and sampler — then download the mix here.
+        Tap <b>REC</b> in the top bar to record everything you play — decks, effects and sampler — then download, save or share the mix here.
       </p>
       {s.recordings.length === 0 ? (
         <p className="muted">No recordings yet.</p>
@@ -143,9 +145,32 @@ export function RecordingsPanel({ engine }: { engine: Engine }) {
                 </div>
               </div>
               <audio controls src={r.url} preload="none" />
-              <a className="btn primary small" href={r.url} download={r.name}>
-                Download
-              </a>
+              {native ? (
+                <>
+                  <button
+                    className="btn primary small"
+                    onClick={async () => {
+                      try {
+                        engine.notify(`Saved to ${await saveRecording(r.blob, r.name)}`);
+                      } catch {
+                        engine.notify('Could not save here. Try Share instead.');
+                      }
+                    }}
+                  >
+                    Save
+                  </button>
+                  <button
+                    className="btn small"
+                    onClick={() => shareRecording(r.blob, r.name).catch(() => engine.notify('Sharing failed.'))}
+                  >
+                    Share
+                  </button>
+                </>
+              ) : (
+                <a className="btn primary small" href={r.url} download={r.name}>
+                  Download
+                </a>
+              )}
               <button className="icon" onClick={() => engine.deleteRecording(r.id)} aria-label={`Delete ${r.name}`}>
                 ✕
               </button>

@@ -2,6 +2,7 @@ import { AutoMix } from './automix';
 import { crossfaderGains, type CrossfaderCurve } from './crossfader';
 import { Deck, type DeckId } from './deck';
 import { deckProcessorSource } from './deckProcessor';
+import { Headphones, type CueMode } from './headphones';
 import { Library } from './library';
 import { Sampler } from './sampler';
 import { Store } from './store';
@@ -9,6 +10,7 @@ import { Store } from './store';
 export interface Recording {
   id: number;
   url: string;
+  blob: Blob;
   name: string;
   size: number;
   seconds: number;
@@ -23,6 +25,12 @@ export interface EngineState {
   recordings: Recording[];
   automix: boolean;
   automixFade: number;
+  cueMode: CueMode;
+  cueDevice: string | null;
+  /** Phones mix: 0 = cue only, 1 = master only. */
+  cueMix: number;
+  phonesLevel: number;
+  notice: string | null;
 }
 
 function pickMime(): string | undefined {
@@ -39,12 +47,14 @@ export class Engine {
   readonly store: Store<EngineState>;
   readonly automix: AutoMix;
   readonly canRecord: boolean;
+  readonly headphones: Headphones;
 
   private master: GainNode;
   private recDest: MediaStreamAudioDestinationNode | null = null;
   private recorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private recId = 0;
+  private noticeTimer = 0;
 
   static async create(): Promise<Engine> {
     const Ctor: typeof AudioContext =
@@ -72,7 +82,8 @@ export class Engine {
     this.masterAnalyser.fftSize = 1024;
     this.master.connect(limiter);
     limiter.connect(this.masterAnalyser);
-    limiter.connect(ctx.destination);
+    // Headphones owns the route from the master to the speakers (it may split it).
+    this.headphones = new Headphones(ctx, limiter);
 
     this.canRecord = !!pickMime() && typeof ctx.createMediaStreamDestination === 'function';
     if (this.canRecord) {
@@ -81,8 +92,8 @@ export class Engine {
     }
 
     this.decks = {
-      A: new Deck(ctx, 'A', this.master),
-      B: new Deck(ctx, 'B', this.master),
+      A: new Deck(ctx, 'A', this.master, this.headphones.cueBus),
+      B: new Deck(ctx, 'B', this.master, this.headphones.cueBus),
     };
     this.sampler = new Sampler(ctx);
     this.sampler.output.connect(this.master);
@@ -97,6 +108,11 @@ export class Engine {
       recordings: [],
       automix: false,
       automixFade: 10,
+      cueMode: 'off',
+      cueDevice: null,
+      cueMix: 0.25,
+      phonesLevel: 0.8,
+      notice: null,
     });
     this.applyCrossfader();
     this.setMasterVolume(0.9);
@@ -148,6 +164,41 @@ export class Engine {
     master.setSyncFlag(false);
     deck.setSyncFlag(true);
     return true;
+  }
+
+  /** Show a short message in the app (auto-hides). */
+  notify(message: string) {
+    window.clearTimeout(this.noticeTimer);
+    this.store.set({ notice: message });
+    this.noticeTimer = window.setTimeout(() => this.store.set({ notice: null }), 4000);
+  }
+
+  // ------------------------------------------------------------- headphones
+
+  togglePfl(deck: Deck) {
+    deck.setPfl(!deck.state.pfl);
+    if (!deck.state.pfl || this.state.cueMode !== 'off') return;
+    this.notify('To hear the cue, choose a headphone mode in the Phones tab.');
+  }
+
+  async setCueMode(mode: CueMode, deviceId?: string) {
+    try {
+      await this.headphones.setMode(mode, deviceId);
+      this.store.set({ cueMode: mode, cueDevice: mode === 'device' ? (deviceId ?? null) : this.state.cueDevice });
+    } catch (err) {
+      this.store.set({ cueMode: this.headphones.currentMode });
+      this.notify(err instanceof Error ? `Could not switch output: ${err.message}` : 'Could not switch output.');
+    }
+  }
+
+  setCueMix(x: number) {
+    this.store.set({ cueMix: x });
+    this.headphones.setMix(x);
+  }
+
+  setPhonesLevel(v: number) {
+    this.store.set({ phonesLevel: v });
+    this.headphones.setLevel(v);
   }
 
   async loadTrack(deckId: DeckId, trackId: string) {
@@ -220,6 +271,7 @@ export class Engine {
       const recording: Recording = {
         id: ++this.recId,
         url: URL.createObjectURL(blob),
+        blob,
         name,
         size: blob.size,
         seconds: Math.round((Date.now() - startedAt) / 1000),

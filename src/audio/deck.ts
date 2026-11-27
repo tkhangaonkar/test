@@ -31,6 +31,8 @@ export interface DeckState {
   /** Fractional tempo change: 0.03 = +3 %. */
   tempo: number;
   tempoRange: number;
+  /** Key lock: tempo changes keep the original pitch. */
+  keylock: boolean;
   sync: boolean;
   cue: number;
   hotCues: (number | null)[];
@@ -43,6 +45,8 @@ export interface DeckState {
   filter: number;
   /** Channel fader, 0..1. */
   volume: number;
+  /** Pre-fader listen: send this deck to the headphones. */
+  pfl: boolean;
   fx: { type: FxType; on: boolean; wet: number; param: number };
 }
 
@@ -72,6 +76,7 @@ export class Deck {
   private lp: BiquadFilterNode;
   private hp: BiquadFilterNode;
   private fader: GainNode;
+  private cueTap: GainNode;
 
   private srcRate = 44100;
   private frame = 0;
@@ -86,6 +91,7 @@ export class Deck {
     private ctx: AudioContext,
     readonly id: DeckId,
     destination: AudioNode,
+    cueDestination?: AudioNode,
   ) {
     this.store = new Store<DeckState>({
       track: null,
@@ -95,6 +101,7 @@ export class Deck {
       ended: false,
       tempo: 0,
       tempoRange: 0.08,
+      keylock: false,
       sync: false,
       cue: 0,
       hotCues: Array(HOT_CUES).fill(null),
@@ -105,6 +112,7 @@ export class Deck {
       kills: { high: false, mid: false, low: false },
       filter: 0,
       volume: 1,
+      pfl: false,
       fx: { type: 'echo', on: false, wet: 0.5, param: 0.5 },
     });
 
@@ -142,6 +150,11 @@ export class Deck {
     this.node.connect(this.trim);
     this.trim.connect(low).connect(mid).connect(high).connect(this.lp).connect(this.hp).connect(this.fx.input);
     this.fx.output.connect(this.fader);
+    // Headphone cue taps the signal before the channel fader.
+    this.cueTap = ctx.createGain();
+    this.cueTap.gain.value = 0;
+    this.fx.output.connect(this.cueTap);
+    if (cueDestination) this.cueTap.connect(cueDestination);
     this.fader.connect(this.analyser);
     this.fader.connect(this.xfade);
     this.xfade.connect(destination);
@@ -323,6 +336,11 @@ export class Deck {
   cycleTempoRange() {
     const i = TEMPO_RANGES.indexOf(this.state.tempoRange);
     this.setTempoRange(TEMPO_RANGES[(i + 1) % TEMPO_RANGES.length]);
+  }
+
+  setKeylock(on: boolean) {
+    this.store.set({ keylock: on });
+    this.post({ type: 'keylock', value: on });
   }
 
   /** Temporary nudge: -1 slows down, +1 speeds up, 0 releases. */
@@ -511,6 +529,11 @@ export class Deck {
     }
     this.smooth(this.lp.Q, q);
     this.smooth(this.hp.Q, q);
+  }
+
+  setPfl(on: boolean) {
+    this.store.set({ pfl: on });
+    this.smooth(this.cueTap.gain, on ? 1 : 0);
   }
 
   setVolume(v: number) {

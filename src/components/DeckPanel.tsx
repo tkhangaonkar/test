@@ -67,6 +67,16 @@ export function DeckPanel({ deck, engine }: { deck: Deck; engine: Engine }) {
   const effBpm = deck.effectiveBpm();
   const range = Math.round(s.tempoRange * 100);
   const side = deck.id === 'A' ? 'left' : 'right';
+  const keyButton = (
+    <button
+      className={`chip small key ${s.keylock ? 'on' : ''}`}
+      onClick={() => deck.setKeylock(!s.keylock)}
+      aria-pressed={s.keylock}
+      title="Key lock: change tempo without changing pitch"
+    >
+      KEY
+    </button>
+  );
 
   const onSync = () => {
     const ok = engine.toggleSync(deck);
@@ -102,6 +112,7 @@ export function DeckPanel({ deck, engine }: { deck: Deck; engine: Engine }) {
           <button className="chip small" onClick={() => deck.cycleTempoRange()} title="Tempo fader range">
             ±{range}%
           </button>
+          {keyButton}
           <Fader
             label={`Deck ${deck.id} tempo`}
             value={s.tempo}
@@ -140,6 +151,7 @@ export function DeckPanel({ deck, engine }: { deck: Deck; engine: Engine }) {
 
       <div className="tempo-h">
         <span className="muted small">Tempo</span>
+        {keyButton}
         <Fader
           orientation="horizontal"
           label={`Deck ${deck.id} tempo`}

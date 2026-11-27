@@ -8,6 +8,8 @@
  * which is what lets the platter scratch, the tempo fader bend pitch, and the
  * loop engine wrap seamlessly at sample accuracy.
  */
+import { Stretcher } from './stretch';
+
 export const DECK_PROCESSOR_NAME = 'deckflow-deck';
 
 /** Start/stop ramp time constant (seconds); avoids clicks. Exported for sync compensation. */
@@ -15,6 +17,7 @@ export const MOTOR_TAU = 0.005;
 
 export const deckProcessorSource = /* js */ `
 const MOTOR_TAU = ${MOTOR_TAU};
+const Stretcher = (${Stretcher.toString()});
 class DeckProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -32,6 +35,8 @@ class DeckProcessor extends AudioWorkletProcessor {
     this.loopStart = -1;
     this.loopEnd = -1;
     this.counter = 0;
+    this.keylock = false;
+    this.stretch = new Stretcher(sampleRate);
     this.motorCoef = 1 - Math.exp(-1 / (MOTOR_TAU * sampleRate));
     this.handCoef = 1 - Math.exp(-1 / (0.010 * sampleRate));
     this.port.onmessage = (e) => this.onMessage(e.data);
@@ -74,6 +79,9 @@ class DeckProcessor extends AudioWorkletProcessor {
       case 'bend':
         this.bend = m.value;
         break;
+      case 'keylock':
+        this.keylock = !!m.value;
+        break;
       case 'scratchStart':
         this.scratching = true;
         this.scratchTarget = this.pos;
@@ -106,6 +114,9 @@ class DeckProcessor extends AudioWorkletProcessor {
     const ratio = this.srcRate / sampleRate;
     const loopOn = this.loopEnd > this.loopStart && this.loopStart >= 0;
     let ended = false;
+    const st = this.stretch;
+    const lockLs = loopOn ? Math.round(this.loopStart) : -1;
+    const lockLe = loopOn ? Math.round(this.loopEnd) : -1;
 
     for (let i = 0; i < n; i++) {
       if (this.scratching) {
@@ -129,6 +140,15 @@ class DeckProcessor extends AudioWorkletProcessor {
         if (this.playing && !this.scratching) { this.playing = false; ended = true; }
       }
 
+      // Key lock: time-stretch so tempo changes keep the original pitch.
+      // Scratching, spin-up/stop and resampled sources use plain varispeed.
+      if (this.keylock && this.playing && !this.scratching && this.current > 0.05 && ratio === 1) {
+        st.next(this.pos, left, right, len, lockLs, lockLe);
+        L[i] = st.l;
+        R[i] = st.r;
+        continue;
+      }
+      if (st.active) st.reset();
       const p = this.pos;
       const i0 = p | 0;
       const f = p - i0;
